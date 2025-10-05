@@ -5,24 +5,24 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/amirzayi/shorturl/store"
 	"log"
 	"math"
 	"math/rand"
 	"net/http"
 	"net/url"
-	"shorturl/store"
 	"time"
-
-	"github.com/redis/go-redis/v9"
 )
 
-func NewShortener(storage store.Store) Shortener {
-	return Shortener{store: storage}
+func NewShortener(storage store.Store, keyLen int) Shortener {
+	return Shortener{store: storage, keyLen: keyLen}
 }
 
 type Shortener struct {
-	store store.Store
+	store  store.Store
+	keyLen int
 }
+
 type SeekRequest struct {
 	URL                string `json:"url"`
 	ExpirationInMinute int    `json:"expirationInMinute"`
@@ -44,8 +44,8 @@ func (s Shortener) Short(w http.ResponseWriter, r *http.Request) {
 
 	var key string
 	for {
-		bytes := make([]byte, 4)
-		for i := range 4 {
+		bytes := make([]byte, s.keyLen)
+		for i := range s.keyLen {
 			bytes[i] = byte(rand.Intn(math.MaxUint8))
 		}
 		key = base64.RawURLEncoding.EncodeToString(bytes)
@@ -65,18 +65,18 @@ func (s Shortener) Short(w http.ResponseWriter, r *http.Request) {
 		log.Printf("failed to store shortened url: %v\n", err)
 		return
 	}
-	fmt.Fprintln(w, key)
+	fmt.Fprint(w, key)
 }
 
 func (s Shortener) Seeker(w http.ResponseWriter, r *http.Request) {
 	shortedURL, err := s.store.Get(r.Context(), r.PathValue("key"))
 	if err != nil {
-		if errors.Is(err, redis.Nil) {
-			w.WriteHeader(http.StatusNotFound)
+		if errors.Is(err, store.ErrNotFound) {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			return
 		}
-		log.Printf("failed to get key from redis:%v\n", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		log.Printf("failed to get key from store: %v\n", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 

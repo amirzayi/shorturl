@@ -1,11 +1,14 @@
 package main
 
 import (
+	"encoding/json"
+	"github.com/amirzayi/shorturl/handler"
+	"github.com/amirzayi/shorturl/store"
 	"log"
+	"net"
 	"net/http"
 	"os"
-	"shorturl/handler"
-	"shorturl/store"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
@@ -13,7 +16,6 @@ import (
 )
 
 func main() {
-
 	storage, err := store.NewFromEnv(os.Getenv("DRIVER"))
 	if err != nil {
 		log.Fatalf("failed to initialize store: %v\n", err)
@@ -21,15 +23,22 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	// limiter used to control
+	// limiter used to control scrapers
 	limitMiddleware := httprate.LimitByIP(10, time.Minute)
 
-	shorting := handler.NewShortener(storage)
-	mux.Handle("GET /{key}", limitMiddleware(http.HandlerFunc(shorting.Seeker)))
-	authMiddleware := middleware.BasicAuth("amir", map[string]string{"amir": "mirzaei"})
-	mux.Handle("POST /short", authMiddleware(http.HandlerFunc(shorting.Short)))
+	shortener := handler.NewShortener(storage, 4)
 
-	if err = http.ListenAndServe(":8888", middleware.Logger(mux)); err != nil {
-		log.Fatalf("unable to start server: %s", err.Error())
+	credentials := make(map[string]string)
+	err = json.NewDecoder(strings.NewReader(os.Getenv("CREDENTIALS"))).Decode(&credentials)
+	if err != nil {
+		log.Fatalf("failed to load credentials: %v", err)
+	}
+
+	mux.Handle("GET /{key}", limitMiddleware(http.HandlerFunc(shortener.Seeker)))
+	authMiddleware := middleware.BasicAuth("amir", credentials)
+	mux.Handle("POST /short", authMiddleware(http.HandlerFunc(shortener.Short)))
+
+	if err = http.ListenAndServe(net.JoinHostPort("", os.Getenv("HTTP_PORT")), middleware.Logger(mux)); err != nil {
+		log.Fatalf("unable to start server: %v", err)
 	}
 }
