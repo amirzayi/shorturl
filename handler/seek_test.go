@@ -2,19 +2,22 @@ package handler_test
 
 import (
 	"bytes"
+	"encoding/base32"
 	"encoding/json"
-	"github.com/amirzayi/shorturl/handler"
-	"github.com/amirzayi/shorturl/store"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/amirzayi/shorturl/handler"
+	"github.com/amirzayi/shorturl/keygen"
+	"github.com/amirzayi/shorturl/store"
 )
 
 var shortener handler.Shortener
 
 func TestMain(m *testing.M) {
 	storage := store.NewInmemoryShortener()
-	shortener = handler.NewShortener(storage, 4)
+	shortener = handler.NewShortener(storage, keygen.RandomTimebasedEncoder(base32.StdEncoding.WithPadding(base32.NoPadding)))
 	m.Run()
 }
 

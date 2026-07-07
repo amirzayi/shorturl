@@ -1,15 +1,18 @@
 package main
 
 import (
+	"cmp"
 	"encoding/json"
-	"github.com/amirzayi/shorturl/handler"
-	"github.com/amirzayi/shorturl/store"
 	"log"
 	"net"
 	"net/http"
 	"os"
-	"strings"
+	"strconv"
 	"time"
+
+	"github.com/amirzayi/shorturl/handler"
+	"github.com/amirzayi/shorturl/keygen"
+	"github.com/amirzayi/shorturl/store"
 
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httprate"
@@ -21,24 +24,34 @@ func main() {
 		log.Fatalf("failed to initialize store: %v\n", err)
 	}
 
-	mux := http.NewServeMux()
+	shortener := handler.NewShortener(storage, keygen.NoDuplication(storage, 4))
 
-	// limiter used to control scrapers
-	limitMiddleware := httprate.LimitByIP(10, time.Minute)
+	emptyMiddleware := func(next http.Handler) http.Handler { return next }
 
-	shortener := handler.NewShortener(storage, 4)
+	authMiddleware, limitMiddleware := emptyMiddleware, emptyMiddleware
 
 	credentials := make(map[string]string)
-	err = json.NewDecoder(strings.NewReader(os.Getenv("CREDENTIALS"))).Decode(&credentials)
-	if err != nil {
-		log.Fatalf("failed to load credentials: %v", err)
+
+	credFile, err := os.Open("credentials.json")
+	if err == nil {
+		err = json.NewDecoder(credFile).Decode(&credentials)
+		if err != nil {
+			log.Fatalf("failed to load credentials: %v", err)
+		}
+		authMiddleware = middleware.BasicAuth("shortener", credentials)
 	}
 
+	// limiter used to control scrapers
+	if limit, _ := strconv.Atoi(os.Getenv("LIMIT_PER_MINUTE")); limit > 0 {
+		limitMiddleware = httprate.LimitByIP(limit, time.Minute)
+	}
+
+	mux := http.NewServeMux()
 	mux.Handle("GET /{key}", limitMiddleware(http.HandlerFunc(shortener.Seeker)))
-	authMiddleware := middleware.BasicAuth("amir", credentials)
 	mux.Handle("POST /short", authMiddleware(http.HandlerFunc(shortener.Short)))
 
-	if err = http.ListenAndServe(net.JoinHostPort("", os.Getenv("HTTP_PORT")), middleware.Logger(mux)); err != nil {
+	port := cmp.Or(os.Getenv("HTTP_PORT"), "8070")
+	if err = http.ListenAndServe(net.JoinHostPort("", port), middleware.Logger(mux)); err != nil {
 		log.Fatalf("unable to start server: %v", err)
 	}
 }

@@ -23,7 +23,8 @@ func NewRedisShortener(connection string, prefix string) (Store, error) {
 		client: redis.NewClient(opt),
 		prefix: prefix,
 	}
-	ctx, _ := context.WithTimeoutCause(context.Background(), time.Second*5, errors.New("redis didn't connected in 5 seconds"))
+	ctx, cancel := context.WithTimeoutCause(context.Background(), time.Second*5, errors.New("redis didn't connected in 5 seconds"))
+	defer cancel()
 	err = rdb.client.Ping(ctx).Err()
 	return rdb, err
 }
