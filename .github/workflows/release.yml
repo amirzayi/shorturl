@@ -1,0 +1,54 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    strategy:
+      matrix:
+        os: [linux, darwin, windows]
+        arch: [amd64, arm64]
+        exclude:
+          - os: windows
+            arch: arm64
+
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.26.4"
+
+      - name: Install Dependencies
+        run: go get .
+
+      - name: Test
+        run: go test -v ./...
+
+      - name: Build for multiple platforms
+        run: |
+          mkdir -p dist
+          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build \
+            -ldflags="-s -w" \
+            -o dist/shorturl-${{matrix.os}}-${{matrix.arch}}${{matrix.os == 'windows' && '.exe' || '' }}
+
+      - name: Release
+        uses: softprops/action-gh-release@v3
+        with:
+          working_directory: dist
+          files: "*"
+
+          body: |
+            ## Release ${{ github.ref_name }}
+
+            ### Installation
+            ```bash
+            go install github.com/amirzayi/cicd@${{ github.ref_name }}
