@@ -51,4 +51,5 @@ jobs:
 
             ### Installation
             ```bash
-            go install github.com/amirzayi/cicd@${{ github.ref_name }}
+            go install github.com/amirzayi/relay@${{ github.ref_name }}
+            ```
