@@ -77,5 +77,5 @@ Docker image is available on [docker hub](https://hub.docker.com/r/amirzayi/shor
 
 ```bash
 docker pull amirzayi/shorturl:latest
-docker run -p 8070:8000 -e -it --name shorturl --rm -e DRIVER=MEMORY shorturl:latest
+docker run -p 8070:8000 -it --name shorturl --rm -e DRIVER=MEMORY shorturl:latest
 ```
