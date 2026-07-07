@@ -27,7 +27,7 @@ func TestShort(t *testing.T) {
 		request      handler.SeekRequest
 		expectedCode int
 	}{
-		{"valid test", handler.SeekRequest{URL: "https://google.com"}, http.StatusOK},
+		{"valid test", handler.SeekRequest{URL: "https://google.com"}, http.StatusCreated},
 		{"invalid url", handler.SeekRequest{URL: "http//google.com"}, http.StatusBadRequest},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
