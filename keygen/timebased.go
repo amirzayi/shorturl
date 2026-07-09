@@ -13,7 +13,10 @@ func RandomTimebasedEncoder(enc interface{ EncodeToString(src []byte) string }) 
 		timestamp := time.Now().UnixNano()
 
 		b := make([]byte, 8)
-		binary.Encode(b, binary.BigEndian, timestamp)
+		_, err := binary.Encode(b, binary.BigEndian, timestamp)
+		if err != nil {
+			return "", err
+		}
 
 		random := make([]byte, 2)
 		rand.Read(random)

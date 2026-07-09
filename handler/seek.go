@@ -59,7 +59,7 @@ func (s Shortener) Short(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	fmt.Fprint(w, key)
+	_, _ = fmt.Fprint(w, key)
 }
 
 func (s Shortener) Seeker(w http.ResponseWriter, r *http.Request) {
