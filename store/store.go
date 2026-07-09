@@ -24,6 +24,15 @@ func NewFromEnv(driver string) (Store, error) {
 	case "MEMORY":
 		return NewInmemoryShortener(), nil
 
+	case "SQLITE":
+		return NewSqliteShortener("file:db.sqlite")
+
+	case "MYSQL":
+		return NewMysqlShortener(os.Getenv("DRIVER_URL"))
+
+	case "POSTGRES":
+		return NewPostgresShortener(os.Getenv("DRIVER_URL"))
+
 	default:
 		return nil, ErrDriverNotSupported
 	}

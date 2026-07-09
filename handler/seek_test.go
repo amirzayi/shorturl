@@ -66,8 +66,8 @@ func TestShortener(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(b))
 	shortener.Short(rec, req)
-	if rec.Code != 200 {
-		t.Fatalf("expected 200 but got %d", rec.Code)
+	if rec.Code != 201 {
+		t.Fatalf("expected 201 but got %d", rec.Code)
 	}
 
 	hash := rec.Body.String()
